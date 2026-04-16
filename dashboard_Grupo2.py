@@ -4,22 +4,24 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
- 
-# CONFIGURACIÓN INICIAL
- 
+# ==============================
+# CONFIGURACIÓN
+# ==============================
 st.set_page_config(layout='wide', initial_sidebar_state='expanded')
-
 sns.set_theme(style="whitegrid")
 
- 
+# ==============================
 # CARGA DE DATOS
- 
+# ==============================
 @st.cache_data
 def load_data():
     df = pd.read_csv("data.csv")
-    df['Date'] = pd.to_datetime(df['Date'])
 
-    # Mapear sucursales (UNA SOLA VEZ)
+    # LIMPIEZA PROFESIONAL DE FECHA
+    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+    df = df.dropna(subset=['Date'])
+
+    # Mapear sucursales
     branch_map = {
         'A': 'A - Yangon',
         'B': 'B - Mandalay',
@@ -31,12 +33,13 @@ def load_data():
 
 df = load_data()
 
-
-# SIDEBAR (FILTROS)
- 
-st.sidebar.title(" Dashboard Ventas y analisis de clientes")
+# ==============================
+# SIDEBAR
+# ==============================
+st.sidebar.title("📊 Dashboard Supermarket Sales")
 st.sidebar.markdown("### 🔍 Filtros de exploración")
 
+# FILTROS CATEGÓRICOS
 branch = st.sidebar.multiselect(
     "Selecciona sucursal",
     sorted(df['Branch'].unique()),
@@ -55,26 +58,14 @@ customer = st.sidebar.multiselect(
     default=df['Customer type'].unique()
 )
 
-# Filtro de fecha (PRO)
-# date_range = st.sidebar.date_input(
-#     "Rango de fechas",
-#     [df['Date'].min(), df['Date'].max()]
-# )
-
-
 # ==============================
-# FILTRO DE FECHA (PROFESIONAL)
+# 🔥 FILTRO DE FECHA (PROFESIONAL)
 # ==============================
-
-# Asegurar formato datetime
-df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-df = df.dropna(subset=['Date'])
-
-# Obtener rango real
 min_date = df['Date'].min().date()
 max_date = df['Date'].max().date()
 
-# Widget de selección
+st.sidebar.caption(f"Datos disponibles desde {min_date} hasta {max_date}")
+
 date_range = st.sidebar.date_input(
     "📅 Selecciona rango de fechas",
     value=(min_date, max_date),
@@ -82,18 +73,19 @@ date_range = st.sidebar.date_input(
     max_value=max_date
 )
 
-# Validación robusta (MUY IMPORTANTE)
+# VALIDACIÓN ROBUSTA
 if isinstance(date_range, tuple) and len(date_range) == 2:
     start_date, end_date = date_range
 else:
     start_date = min_date
     end_date = max_date
 
-# Convertir a datetime
 start_date = pd.to_datetime(start_date)
 end_date = pd.to_datetime(end_date)
 
-# Aplicar filtro
+# ==============================
+# FILTRADO GLOBAL
+# ==============================
 df_filtered = df[
     (df['Branch'].isin(branch)) &
     (df['Product line'].isin(product)) &
@@ -102,34 +94,25 @@ df_filtered = df[
     (df['Date'] <= end_date)
 ]
 
-# FILTRADO
-
-df_filtered = df[
-    (df['Branch'].isin(branch)) &
-    (df['Product line'].isin(product)) &
-    (df['Customer type'].isin(customer)) &
-    (df['Date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])))
-]
-
- 
+# ==============================
 # TÍTULO
- 
-st.title(" Dashboard de Ventas y  Análisis de Clientes")
+# ==============================
+st.title("📊 Dashboard de Ventas - Supermarket Sales")
 st.markdown("Explora el comportamiento de las ventas, productos y clientes mediante visualizaciones interactivas.")
 
- 
+# ==============================
 # MÉTRICAS
- 
+# ==============================
 col1, col2, col3 = st.columns(3)
 
 col1.metric("💰 Ventas Totales", f"${df_filtered['Total'].sum():,.0f}")
 col2.metric("📦 Transacciones", f"{len(df_filtered):,}")
 col3.metric("⭐ Rating Promedio", f"{df_filtered['Rating'].mean():.2f}")
 
- 
+# ==============================
 # 📈 ANÁLISIS TEMPORAL
- 
-st.markdown("##  Análisis en Linea de Tiempo")
+# ==============================
+st.markdown("## 📈 Análisis Temporal")
 
 df_time = df_filtered.groupby('Date')['Total'].sum().reset_index()
 
@@ -145,12 +128,7 @@ sns.lineplot(
     ax=ax1
 )
 
-ax1.fill_between(
-    df_time['Date'],
-    df_time['Total'],
-    color="#1F88D3",
-    alpha=0.3
-)
+ax1.fill_between(df_time['Date'], df_time['Total'], color="#1F88D3", alpha=0.3)
 
 ax1.set_title("Evolución de las ventas totales en el tiempo", fontsize=14, weight='bold')
 ax1.set_xlabel("Fecha")
@@ -162,13 +140,13 @@ sns.despine()
 fig1.tight_layout()
 st.pyplot(fig1)
 
-
-# 📦 ANÁLISIS DE PRODUCTOS
-st.markdown("##  Análisis de Productos")
+# ==============================
+# 📦 PRODUCTOS
+# ==============================
+st.markdown("## 📦 Análisis de Productos")
 
 colA, colB = st.columns(2)
 
-# BARPLOT
 with colA:
     df_prod = df_filtered.groupby('Product line')['Total'].sum().reset_index()
     df_prod = df_prod.sort_values(by='Total', ascending=False)
@@ -186,18 +164,14 @@ with colA:
         ax=ax2
     )
 
-    ax2.set_title("Ventas por línea de producto", fontsize=13, weight='bold')
-    ax2.set_xlabel("Ventas")
-    ax2.set_ylabel("")
-
     for i, value in enumerate(df_prod['Total']):
         ax2.text(value, i, f' {value:.0f}', va='center')
 
+    ax2.set_title("Ventas por línea de producto")
     sns.despine()
     fig2.tight_layout()
     st.pyplot(fig2)
 
-# DONUT
 with colB:
     df_group = df_filtered.groupby('Product line')['Total'].sum()
     colors = plt.cm.viridis(np.linspace(0.2, 0.9, len(df_group)))
@@ -213,19 +187,19 @@ with colB:
         wedgeprops={'edgecolor': 'white'}
     )
 
-    centre_circle = plt.Circle((0,0), 0.40, fc='white')
+    centre_circle = plt.Circle((0,0), 0.55, fc='white')
     ax6.add_artist(centre_circle)
 
-    ax6.set_title("Participación de ventas", fontsize=13, weight='bold')
+    ax6.set_title("Participación de ventas")
     ax6.set_aspect('equal')
 
     st.pyplot(fig6)
 
-# 🏬 ANÁLISIS POR SUCURSAL
-
+# ==============================
+# 🏬 SUCURSALES
+# ==============================
 st.markdown("## 🏬 Análisis por Sucursal")
 
-# GRÁFICO 3
 df_grouped = df_filtered.groupby(['Branch_full', 'Product line'])['Total'].sum().reset_index()
 
 order = df_filtered.groupby('Branch')['Total'].sum().sort_values(ascending=False).index
@@ -253,7 +227,9 @@ ax3.legend(bbox_to_anchor=(1.02, 1), loc='upper left')
 fig3.tight_layout()
 st.pyplot(fig3)
 
-# GRÁFICO 4
+# ==============================
+# 💳 PAGOS
+# ==============================
 fig4, ax4 = plt.subplots(figsize=(10,5))
 
 sns.countplot(
@@ -271,16 +247,14 @@ sns.despine()
 fig4.tight_layout()
 st.pyplot(fig4)
 
-# 👥 ANÁLISIS DE CLIENTES
-
+# ==============================
+# 👥 CLIENTES
+# ==============================
 st.markdown("## 👥 Análisis de Clientes")
 
 fig5, ax5 = plt.subplots(figsize=(8,5))
 
-palette = {
-    'Normal': '#4C72B0',
-    'Member': '#55A868'
-}
+palette = {'Normal': '#4C72B0', 'Member': '#55A868'}
 
 sns.boxplot(
     data=df_filtered,
@@ -297,20 +271,17 @@ ax5.set_title("Distribución de ventas por tipo de cliente")
 
 sns.despine()
 fig5.tight_layout()
-
 st.pyplot(fig5)
 
- 
+# ==============================
 # 🧠 REFLEXIÓN
- 
-st.markdown("##  Reflexión sobre interactividad")
+# ==============================
+st.markdown("## 🧠 Reflexión sobre interactividad")
 
 st.markdown("""
 El dashboard incorpora filtros interactivos por sucursal, línea de producto, tipo de cliente y rango de fechas.
 
-Estos elementos permiten segmentar dinámicamente la información, facilitando la comparación entre distintas dimensiones del negocio y la identificación de patrones específicos.
+Estos permiten segmentar dinámicamente la información, facilitando la comparación entre dimensiones del negocio y la identificación de patrones específicos.
 
-El uso de filtros múltiples permite analizar combinaciones de variables, mientras que el control temporal permite observar la evolución de los datos en distintos periodos.
-
-En conjunto, estas herramientas transforman el dashboard en un sistema exploratorio, mejorando significativamente la comprensión de los datos frente a visualizaciones estáticas.
-""") 
+El filtro temporal permite analizar la evolución de los datos en distintos periodos, mejorando la exploración frente a análisis estáticos.
+""")
