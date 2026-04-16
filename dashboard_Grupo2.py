@@ -56,10 +56,51 @@ customer = st.sidebar.multiselect(
 )
 
 # Filtro de fecha (PRO)
+# date_range = st.sidebar.date_input(
+#     "Rango de fechas",
+#     [df['Date'].min(), df['Date'].max()]
+# )
+
+
+# ==============================
+# FILTRO DE FECHA (PROFESIONAL)
+# ==============================
+
+# Asegurar formato datetime
+df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+df = df.dropna(subset=['Date'])
+
+# Obtener rango real
+min_date = df['Date'].min().date()
+max_date = df['Date'].max().date()
+
+# Widget de selección
 date_range = st.sidebar.date_input(
-    "Rango de fechas",
-    [df['Date'].min(), df['Date'].max()]
+    "📅 Selecciona rango de fechas",
+    value=(min_date, max_date),
+    min_value=min_date,
+    max_value=max_date
 )
+
+# Validación robusta (MUY IMPORTANTE)
+if isinstance(date_range, tuple) and len(date_range) == 2:
+    start_date, end_date = date_range
+else:
+    start_date = min_date
+    end_date = max_date
+
+# Convertir a datetime
+start_date = pd.to_datetime(start_date)
+end_date = pd.to_datetime(end_date)
+
+# Aplicar filtro
+df_filtered = df[
+    (df['Branch'].isin(branch)) &
+    (df['Product line'].isin(product)) &
+    (df['Customer type'].isin(customer)) &
+    (df['Date'] >= start_date) &
+    (df['Date'] <= end_date)
+]
 
 # FILTRADO
 
