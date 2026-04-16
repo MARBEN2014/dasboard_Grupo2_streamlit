@@ -34,7 +34,7 @@ df = load_data()
 
 # SIDEBAR (FILTROS)
  
-st.sidebar.title(" Dashboard Sales")
+st.sidebar.title(" Dashboard Ventas y analisis de clientes")
 st.sidebar.markdown("### 🔍 Filtros de exploración")
 
 branch = st.sidebar.multiselect(
@@ -73,7 +73,7 @@ df_filtered = df[
  
 # TÍTULO
  
-st.title(" Dashboard de Ventas y clientes")
+st.title(" Dashboard de Ventas y  Análisis de Clientes")
 st.markdown("Explora el comportamiento de las ventas, productos y clientes mediante visualizaciones interactivas.")
 
  
@@ -88,7 +88,7 @@ col3.metric("⭐ Rating Promedio", f"{df_filtered['Rating'].mean():.2f}")
  
 # 📈 ANÁLISIS TEMPORAL
  
-st.markdown("##  Análisis Temporal")
+st.markdown("##  Análisis en Linea de Tiempo")
 
 df_time = df_filtered.groupby('Date')['Total'].sum().reset_index()
 
